@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>おくすり・トイレ記録</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#FAF6EF;
+    --panel:#FFFFFF;
+    --ink:#2E3A3A;
+    --ink-soft:#6B7876;
+    --med:#C99A3C;      /* 薬：琥珀色 */
+    --med-bg:#FBF1DC;
+    --toilet:#3E7C9A;   /* トイレ：青 */
+    --toilet-bg:#E3EFF4;
+    --sage:#8FA998;
+    --line:#E7E1D5;
+    --danger:#B85C4A;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--cream);
+    color:var(--ink);
+    font-family:'Zen Maru Gothic', sans-serif;
+    min-height:100vh;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .wrap{
+    max-width:480px;
+    margin:0 auto;
+    padding:20px 16px 60px;
+  }
+  header{
+    margin-bottom:12px;
+  }
+  h1{
+    font-size:20px;
+    font-weight:900;
+    margin:0;
+    letter-spacing:0.02em;
+  }
+  .toprow{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:18px;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .datepicker{
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    border:1px solid var(--line);
+    background:var(--panel);
+    color:var(--ink);
+    border-radius:8px;
+    padding:6px 8px;
+  }
+  .iobtns{
+    display:flex;
+    gap:6px;
+  }
+  .iobtn{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    border:1px solid var(--line);
+    background:var(--panel);
+    color:var(--ink-soft);
+    border-radius:8px;
+    padding:6px 10px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .iobtn:active{transform:scale(0.96);}
+
+  /* ---- big log buttons ---- */
+  .buttons{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-bottom:22px;
+  }
+  .logbtn{
+    border:none;
+    border-radius:20px;
+    padding:18px 12px;
+    text-align:left;
+    cursor:pointer;
+    color:var(--ink);
+    transition:transform .08s ease;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .logbtn:active{transform:scale(0.96);}
+  .logbtn.med{background:var(--med-bg); border:1.5px solid var(--med);}
+  .logbtn.toilet{background:var(--toilet-bg); border:1.5px solid var(--toilet);}
+  .logbtn .icon{font-size:26px;}
+  .logbtn .label{font-size:15px; font-weight:700;}
+  .logbtn .sub{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+
+  /* ---- timeline signature element ---- */
+  .timeline-card{
+    background:var(--panel);
+    border-radius:18px;
+    padding:18px 14px 10px;
+    margin-bottom:20px;
+    border:1px solid var(--line);
+  }
+  .timeline-card h2{
+    font-size:13px;
+    font-weight:700;
+    color:var(--ink-soft);
+    margin:0 0 14px;
+    letter-spacing:0.05em;
+  }
+  .timeline-svg-wrap{
+    overflow-x:auto;
+  }
+  .axis-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    fill:var(--ink-soft);
+  }
+  .legend{
+    display:flex;
+    gap:16px;
+    margin-top:10px;
+    font-size:11px;
+    color:var(--ink-soft);
+    font-family:'JetBrains Mono', monospace;
+  }
+  .legend span{display:flex; align-items:center; gap:5px;}
+  .dot{width:9px; height:9px; border-radius:50%; display:inline-block;}
+
+  /* ---- log list ---- */
+  .list-card h2{
+    font-size:13px;
+    font-weight:700;
+    color:var(--ink-soft);
+    margin:0 0 10px 4px;
+    letter-spacing:0.05em;
+  }
+  .entry{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:12px 14px;
+    margin-bottom:8px;
+    cursor:pointer;
+  }
+  .entry .badge{
+    width:34px;height:34px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:17px;
+    flex-shrink:0;
+  }
+  .entry.med .badge{background:var(--med-bg); color:var(--med);}
+  .entry.toilet .badge{background:var(--toilet-bg); color:var(--toilet);}
+  .entry .info{flex:1; min-width:0;}
+  .entry .time{
+    font-family:'JetBrains Mono', monospace;
+    font-weight:600;
+    font-size:15px;
+  }
+  .entry .gap{
+    font-size:11px;
+    color:var(--ink-soft);
+    margin-top:2px;
+  }
+  .entry .del{
+    font-size:11px;
+    color:var(--danger);
+    opacity:0.6;
+  }
+  .empty{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:13px;
+    padding:30px 10px;
+  }
+  .toast{
+    position:fixed;
+    bottom:24px;
+    left:50%;
+    transform:translateX(-50%);
+    background:var(--ink);
+    color:var(--cream);
+    padding:10px 18px;
+    border-radius:20px;
+    font-size:13px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s ease;
+  }
+  .toast.show{opacity:0.95;}
+  .footnote{
+    font-size:11px;
+    color:var(--ink-soft);
+    text-align:center;
+    line-height:1.6;
+    margin-top:18px;
+    padding:0 8px;
+  }
+
+  /* ---- backdate link + modal ---- */
+  .backdate-link{
+    display:block;
+    width:100%;
+    background:none;
+    border:none;
+    color:var(--ink-soft);
+    font-family:'Zen Maru Gothic', sans-serif;
+    font-size:12.5px;
+    text-align:center;
+    padding:4px 0 18px;
+    cursor:pointer;
+    text-decoration:underline;
+    text-underline-offset:3px;
+  }
+  .modal-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(46,58,58,0.45);
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    z-index:50;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal-card{
+    background:var(--panel);
+    border-radius:18px;
+    padding:22px 20px;
+    width:100%;
+    max-width:340px;
+  }
+  .modal-card h3{
+    margin:0 0 16px;
+    font-size:16px;
+    font-weight:700;
+  }
+  .modal-field{
+    margin-bottom:16px;
+  }
+  .modal-field label{
+    display:block;
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  .typetoggle{
+    display:flex;
+    gap:8px;
+  }
+  .typebtn{
+    flex:1;
+    padding:10px 6px;
+    border-radius:12px;
+    border:1.5px solid var(--line);
+    background:var(--cream);
+    color:var(--ink-soft);
+    font-family:'Zen Maru Gothic', sans-serif;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .typebtn.med.active{background:var(--med-bg); border-color:var(--med); color:var(--ink);}
+  .typebtn.toilet.active{background:var(--toilet-bg); border-color:var(--toilet); color:var(--ink);}
+  .timeinput{
+    width:100%;
+    font-family:'JetBrains Mono', monospace;
+    font-size:16px;
+    padding:10px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    background:var(--cream);
+    color:var(--ink);
+  }
+  .modal-actions{
+    display:flex;
+    gap:10px;
+    margin-top:4px;
+  }
+  .modalbtn{
+    flex:1;
+    padding:11px 0;
+    border-radius:12px;
+    border:none;
+    font-family:'Zen Maru Gothic', sans-serif;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .modalbtn.cancel{background:var(--cream); color:var(--ink-soft); border:1px solid var(--line);}
+  .modalbtn.confirm{background:var(--sage); color:#fff;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>おくすり・トイレ記録</h1>
+  </header>
+  <div class="toprow">
+    <input type="date" id="datePicker" class="datepicker">
+    <div class="iobtns">
+      <button class="iobtn" id="btnExport" title="この端末の全記録をファイルに保存">書き出し</button>
+      <label class="iobtn" for="importFile" title="書き出したファイルを読み込む">読み込み</label>
+      <input type="file" id="importFile" accept="application/json" style="display:none;">
+    </div>
+  </div>
+
+  <div class="buttons">
+    <button class="logbtn med" id="btnMed">
+      <span class="icon">💊</span>
+      <span class="label">お薬を飲んだ</span>
+      <span class="sub" id="lastMedSub">記録なし</span>
+    </button>
+    <button class="logbtn toilet" id="btnToilet">
+      <span class="icon">💧</span>
+      <span class="label">トイレに行った</span>
+      <span class="sub" id="lastToiletSub">記録なし</span>
+    </button>
+  </div>
+
+  <button class="backdate-link" id="btnBackdate">🕒 時刻を指定して後から記録する</button>
+
+  <div class="timeline-card">
+    <h2>その日のタイムライン</h2>
+    <div class="timeline-svg-wrap">
+      <svg id="timelineSvg" width="100%" height="90"></svg>
+    </div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--med)"></span>お薬</span>
+      <span><span class="dot" style="background:var(--toilet)"></span>トイレ</span>
+    </div>
+  </div>
+
+  <div class="list-card">
+    <h2>記録一覧（タップで削除）</h2>
+    <div id="entryList"></div>
+  </div>
+
+  <p class="footnote">データはこの端末のブラウザ内だけに保存されます。他の端末とは自動で同期されません。機種変更や共有時は「書き出し」でファイルを保存し、別の端末で「読み込み」してください。</p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-card">
+    <h3>後から記録する</h3>
+    <div class="modal-field">
+      <label>種類</label>
+      <div class="typetoggle">
+        <button type="button" class="typebtn med active" id="typeMed" data-type="med">💊 お薬</button>
+        <button type="button" class="typebtn toilet" id="typeToilet" data-type="toilet">💧 トイレ</button>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label for="backdateTime">時刻（表示中の日付：<span id="modalDateLabel"></span>）</label>
+      <input type="time" id="backdateTime" class="timeinput">
+    </div>
+    <div class="modal-actions">
+      <button class="modalbtn cancel" id="btnCancelBackdate">キャンセル</button>
+      <button class="modalbtn confirm" id="btnConfirmBackdate">記録する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const dateISO = (d) => {
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+};
+const timeHM = (d) => {
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+};
+const fmtDuration = (ms) => {
+  const totalMin = Math.round(ms/60000);
+  if (totalMin < 1) return 'たった今';
+  const h = Math.floor(totalMin/60), m = totalMin % 60;
+  if (h > 0) return `${h}時間${m}分`;
+  return `${m}分`;
+};
+
+let currentDate = dateISO(new Date());
+let entries = []; // {type, time (ISO string)}
+
+const datePicker = document.getElementById('datePicker');
+datePicker.value = currentDate;
+datePicker.addEventListener('change', () => {
+  currentDate = datePicker.value;
+  loadDay();
+});
+
+function keyFor(dateStr){ return `logs:${dateStr}`; }
+
+function loadDay(){
+  try {
+    const raw = localStorage.getItem(keyFor(currentDate));
+    entries = raw ? JSON.parse(raw) : [];
+  } catch(e) {
+    entries = [];
+  }
+  entries.sort((a,b) => new Date(a.time) - new Date(b.time));
+  render();
+}
+
+function saveDay(){
+  try {
+    localStorage.setItem(keyFor(currentDate), JSON.stringify(entries));
+  } catch(e) {
+    showToast('保存に失敗しました（端末の空き容量をご確認ください）');
+  }
+}
+
+function getAllLogsFromStorage(){
+  const all = {};
+  for (let i = 0; i < localStorage.length; i++){
+    const k = localStorage.key(i);
+    if (k && k.startsWith('logs:')){
+      try { all[k.slice(5)] = JSON.parse(localStorage.getItem(k)); } catch(e){}
+    }
+  }
+  return all;
+}
+
+function exportAll(){
+  const all = getAllLogsFromStorage();
+  const blob = new Blob([JSON.stringify(all, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = dateISO(new Date());
+  a.href = url;
+  a.download = `おくすりトイレ記録_${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast('ファイルに書き出しました');
+}
+
+function importAll(file){
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      let count = 0;
+      Object.keys(data).forEach(dateStr => {
+        localStorage.setItem(keyFor(dateStr), JSON.stringify(data[dateStr]));
+        count++;
+      });
+      showToast(`${count}日分の記録を読み込みました`);
+      loadDay();
+    } catch(e){
+      showToast('読み込みに失敗しました（ファイル形式をご確認ください）');
+    }
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('btnExport').addEventListener('click', exportAll);
+document.getElementById('importFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) importAll(file);
+  e.target.value = '';
+});
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+function addEntry(type, atDate){
+  const d = atDate || new Date();
+  entries.push({type, time: d.toISOString()});
+  entries.sort((a,b) => new Date(a.time) - new Date(b.time));
+  saveDay();
+  render();
+  showToast(type === 'med' ? 'お薬の時間を記録しました' : 'トイレの時間を記録しました');
+}
+
+function deleteEntry(idx){
+  if (!confirm('この記録を削除しますか？')) return;
+  entries.splice(idx, 1);
+  saveDay();
+  render();
+}
+
+document.getElementById('btnMed').addEventListener('click', () => addEntry('med'));
+document.getElementById('btnToilet').addEventListener('click', () => addEntry('toilet'));
+
+/* ---- backdated / manual entry modal ---- */
+let modalType = 'med';
+const modalOverlay = document.getElementById('modalOverlay');
+const btnBackdate = document.getElementById('btnBackdate');
+const btnCancelBackdate = document.getElementById('btnCancelBackdate');
+const btnConfirmBackdate = document.getElementById('btnConfirmBackdate');
+const typeMedBtn = document.getElementById('typeMed');
+const typeToiletBtn = document.getElementById('typeToilet');
+const backdateTime = document.getElementById('backdateTime');
+const modalDateLabel = document.getElementById('modalDateLabel');
+
+function openBackdateModal(){
+  modalType = 'med';
+  typeMedBtn.classList.add('active');
+  typeToiletBtn.classList.remove('active');
+  const now = new Date();
+  backdateTime.value = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  modalDateLabel.textContent = currentDate;
+  modalOverlay.classList.add('show');
+}
+function closeBackdateModal(){
+  modalOverlay.classList.remove('show');
+}
+
+btnBackdate.addEventListener('click', openBackdateModal);
+btnCancelBackdate.addEventListener('click', closeBackdateModal);
+modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeBackdateModal(); });
+
+typeMedBtn.addEventListener('click', () => {
+  modalType = 'med';
+  typeMedBtn.classList.add('active');
+  typeToiletBtn.classList.remove('active');
+});
+typeToiletBtn.addEventListener('click', () => {
+  modalType = 'toilet';
+  typeToiletBtn.classList.add('active');
+  typeMedBtn.classList.remove('active');
+});
+
+btnConfirmBackdate.addEventListener('click', () => {
+  if (!backdateTime.value){
+    showToast('時刻を選んでください');
+    return;
+  }
+  const [h, m] = backdateTime.value.split(':').map(Number);
+  const [y, mo, da] = currentDate.split('-').map(Number);
+  const d = new Date(y, mo - 1, da, h, m, 0, 0);
+  addEntry(modalType, d);
+  closeBackdateModal();
+});
+
+function render(){
+  renderButtonsSub();
+  renderList();
+  renderTimeline();
+}
+
+function renderButtonsSub(){
+  const meds = entries.filter(e => e.type === 'med');
+  const toilets = entries.filter(e => e.type === 'toilet');
+  const now = new Date();
+  const medSub = document.getElementById('lastMedSub');
+  const toiletSub = document.getElementById('lastToiletSub');
+
+  if (meds.length){
+    const last = new Date(meds[meds.length-1].time);
+    medSub.textContent = `最後 ${timeHM(last)}（${fmtDuration(now-last)}前）`;
+  } else {
+    medSub.textContent = '今日はまだ記録なし';
+  }
+  if (toilets.length){
+    const last = new Date(toilets[toilets.length-1].time);
+    toiletSub.textContent = `最後 ${timeHM(last)}（${fmtDuration(now-last)}前）`;
+  } else {
+    toiletSub.textContent = '今日はまだ記録なし';
+  }
+}
+
+function renderList(){
+  const list = document.getElementById('entryList');
+  if (!entries.length){
+    list.innerHTML = '<div class="empty">まだ記録がありません。上のボタンで記録を始めましょう。</div>';
+    return;
+  }
+  // newest first for the list
+  const ordered = entries.map((e,i)=>({...e, idx:i})).sort((a,b)=> new Date(b.time)-new Date(a.time));
+  list.innerHTML = ordered.map(e => {
+    const t = new Date(e.time);
+    const isMed = e.type === 'med';
+    // find gap to previous chronological entry of same type
+    const sameType = entries.filter(x => x.type === e.type);
+    const posInSame = sameType.findIndex(x => x.time === e.time);
+    let gapText = '';
+    if (posInSame > 0){
+      const prev = new Date(sameType[posInSame-1].time);
+      gapText = `前回から${fmtDuration(t-prev)}`;
+    }
+    return `
+      <div class="entry ${isMed ? 'med':'toilet'}" data-idx="${e.idx}">
+        <div class="badge">${isMed ? '💊' : '💧'}</div>
+        <div class="info">
+          <div class="time">${timeHM(t)} ${isMed ? 'お薬' : 'トイレ'}</div>
+          ${gapText ? `<div class="gap">${gapText}</div>` : ''}
+        </div>
+        <div class="del">削除</div>
+      </div>
+    `;
+  }).join('');
+
+  list.querySelectorAll('.entry').forEach(el => {
+    el.addEventListener('click', () => deleteEntry(parseInt(el.dataset.idx)));
+  });
+}
+
+function renderTimeline(){
+  const svg = document.getElementById('timelineSvg');
+  const width = Math.max(svg.clientWidth || 320, 320);
+  const height = 90;
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  svg.innerHTML = '';
+
+  // determine hour range: default 6:00-22:00, expand if entries fall outside
+  let startH = 6, endH = 22;
+  entries.forEach(e => {
+    const h = new Date(e.time).getHours() + new Date(e.time).getMinutes()/60;
+    if (h < startH) startH = Math.floor(h);
+    if (h > endH) endH = Math.ceil(h);
+  });
+
+  const padL = 8, padR = 8;
+  const usableW = width - padL - padR;
+  const midY = height/2;
+  const toX = (d) => {
+    const h = d.getHours() + d.getMinutes()/60;
+    const frac = (h - startH) / (endH - startH);
+    return padL + frac * usableW;
+  };
+
+  const ns = 'http://www.w3.org/2000/svg';
+  const make = (tag, attrs) => {
+    const el = document.createElementNS(ns, tag);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  };
+
+  // base axis line
+  svg.appendChild(make('line', {x1:padL, y1:midY, x2:width-padR, y2:midY, stroke:'#E7E1D5', 'stroke-width':2}));
+
+  // hour ticks (every 3 hours)
+  for (let h = startH; h <= endH; h += 3){
+    const x = padL + ((h-startH)/(endH-startH)) * usableW;
+    svg.appendChild(make('line', {x1:x, y1:midY-4, x2:x, y2:midY+4, stroke:'#D8D0C0', 'stroke-width':1}));
+    const label = make('text', {x:x, y:height-6, 'text-anchor':'middle', class:'axis-label'});
+    label.textContent = `${h}時`;
+    svg.appendChild(label);
+  }
+
+  if (!entries.length) return;
+
+  // connecting lines from each med to the next toilet (shows dose -> void interval)
+  const meds = entries.filter(e=>e.type==='med').map(e=>({...e, d:new Date(e.time)}));
+  const toilets = entries.filter(e=>e.type==='toilet').map(e=>({...e, d:new Date(e.time)}));
+  meds.forEach(m => {
+    const next = toilets.find(t => t.d > m.d);
+    if (next){
+      const x1 = toX(m.d), x2 = toX(next.d);
+      svg.appendChild(make('line', {
+        x1, y1:midY-14, x2, y2:midY+14,
+        stroke:'#C4B896', 'stroke-width':1, 'stroke-dasharray':'3,3'
+      }));
+    }
+  });
+
+  meds.forEach(m => {
+    const x = toX(m.d);
+    svg.appendChild(make('rect', {x:x-5, y:midY-14-5, width:10, height:10, rx:2, fill:'#C99A3C', transform:`rotate(45 ${x} ${midY-14})`}));
+  });
+  toilets.forEach(t => {
+    const x = toX(t.d);
+    const circle = make('circle', {cx:x, cy:midY+14, r:5.5, fill:'#3E7C9A'});
+    svg.appendChild(circle);
+  });
+}
+
+loadDay();
+window.addEventListener('resize', renderTimeline);
+</script>
+</body>
+</html>
